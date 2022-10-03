@@ -910,16 +910,6 @@ int cpuTurn()
             {
                 if (moves_remaining == 8) return CENTER_MIDDLE;
             }
-/*
-            // Player started in middle
-            if (moves_history[0] == CENTER_MIDDLE)
-            {
-                if (moves_remaining == 8) return BOTTOM_RIGHT;
-            }
-//            if (moves_remaining == 8) return (game_board[CENTER_MIDDLE] == EMPTY) ? CENTER_MIDDLE : BOTTOM_RIGHT;
-            // Player started on corner then took opposite corner (force a tie)
-//            if ((moves_remaining == 6) && isCorner(moves_history[0]) && isOppositeCorner(moves_history[2], moves_history[0])) return BOTTOM_MIDDLE;
-*/
         }
         
         // Tty to take the move that best restricts the opponent
