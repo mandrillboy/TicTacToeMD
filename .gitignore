@@ -1,0 +1,3 @@
+out/*
+src/boot/
+!out/rom.bin
