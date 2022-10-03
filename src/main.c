@@ -332,7 +332,7 @@ void startCredits()
     VDP_drawText("STEPHANE DALLONGEVILLE", 3, 15);
 
     VDP_drawText("GET THE SOURCE CODE AT", 1, 20);
-    VDP_drawText("MEGADRIVEGAMES.COM", 3, 21);
+    VDP_drawText("GITHUB.COM/MANDRILLBOY/TICTACTOEMD", 3, 21);
 
     VDP_drawText("RELEASED AS FREEWARE", 1, 25);
     VDP_drawText("FEEL FREE TO SHARE/MAKE COPIES", 1, 26);
