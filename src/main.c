@@ -3,6 +3,7 @@
  * Megadrive / Genesis version of tic tac toe
  **/
 #include <genesis.h>
+#include <string.h>
 #include <resources.h>
 
 enum GAME_STATE { MAIN_MENU, CREDITS, SELECT_OPPONENT, SELECT_PLAYER2_INPUT, GAME_PLAYING, GAME_RESULT, PAUSE_MENU };
@@ -37,9 +38,9 @@ u16 player2_pad;
 int moves_history[9];
 
 // player scores
-int games_played = 0;
-int player1_wins = 0;
-int player2_wins = 0;
+u32 games_played = 0;
+u32 games_won = 0;
+u32 games_lost = 0;
 
 // gfx
 u16 square_basetile;
@@ -47,6 +48,9 @@ u16 cross_basetile;
 u16 nought_basetile;
 u16 title_basetile;
 u16 bg_basetile;
+u16 border_basetile;
+u16 crossbg_basetile;
+u16 noughtbg_basetile;
 Sprite* user_cursor[4];
 Sprite* pause_sprite[2];
 
@@ -88,10 +92,15 @@ void UpdateSelectPlayer2Menu();
 void clearSelectPlayer2Menu();
 void handleSelectPlayer2Input(u16 joy, u16 changed, u16 state);
 
+// save state
+void loadScores(enum OPPONENT_TYPE opponent);
+void saveScores(enum OPPONENT_TYPE opponent);
+
 // game handling
 void startGame(enum OPPONENT_TYPE opponent);
 void closeGame();
 void setBackground();
+void setForeground();
 void setUserCursorVisibility(SpriteVisibility value);
 void drawGameScores();
 void drawGameBoardSquare(int square, enum SQUARE_STATE state);
@@ -133,6 +142,8 @@ int cpuTurn();
 
 void loadTiles()
 {
+    VDP_loadFont(&tileset_font, DMA);
+
     title_basetile = TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, curTileInd);
     VDP_loadTileSet(img_title.tileset, title_basetile, DMA);
     curTileInd += img_title.tileset->numTile;
@@ -152,17 +163,30 @@ void loadTiles()
     bg_basetile = TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, curTileInd);
     VDP_loadTileSet(img_bg.tileset, bg_basetile, DMA);
     curTileInd += img_bg.tileset->numTile;
+
+    border_basetile = TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, curTileInd);
+    VDP_loadTileSet(&tileset_border, border_basetile, DMA);
+    curTileInd += tileset_border.numTile;
+
+    crossbg_basetile = TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, curTileInd);
+    VDP_loadTileSet(img_crossbg.tileset, crossbg_basetile, DMA);
+    curTileInd += img_crossbg.tileset->numTile;
+
+    noughtbg_basetile = TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, curTileInd);
+    VDP_loadTileSet(img_noughtbg.tileset, noughtbg_basetile, DMA);
+    curTileInd += img_noughtbg.tileset->numTile;
 }
 
 void loadPallete()
 {
+    VDP_setPalette(PAL0, pal_pico8.data);
     VDP_setPalette(PAL1, pal_pico8.data);
-/*
+    VDP_setPalette(PAL2, pal_pico8.data);
+    VDP_setPalette(PAL3, pal_pico8.data);
     // Set background
-    VDP_setPaletteColor(0, RGB24_TO_VDPCOLOR(0xd77bba));
+    VDP_setPaletteColor(0, PAL_getColor(1));
     // Set text colour
-    VDP_setPaletteColor(15, RGB24_TO_VDPCOLOR(0x000000));
-*/
+    //VDP_setPaletteColor(15, RGB24_TO_VDPCOLOR(0x000000));
 }
 
 void loadSprites()
@@ -498,6 +522,8 @@ void startPauseMenu()
     SPR_setAnim(pause_sprite[0], 0);
     // Hide user icon sprite
     setUserCursorVisibility(HIDDEN);
+    // Pause music
+    XGM_pausePlay();
 }
 
 void hidePauseMenu()
@@ -506,6 +532,8 @@ void hidePauseMenu()
     setPauseMenuVisibility(HIDDEN);
     // Show user icon sprite
     setUserCursorVisibility(VISIBLE);
+    // Resume Music
+    XGM_resumePlay();
     // back to game mode
     current_game_state = GAME_PLAYING;
 }
@@ -540,19 +568,46 @@ void handlePauseMenuInput(u16 joy, u16 changed, u16 state)
 
 
 /////////////////////////////////////////////////////////////////////////////////////
+// save state
+/////////////////////////////////////////////////////////////////////////////////////
+
+void loadScores(enum OPPONENT_TYPE opponent)
+{
+    SRAM_enableRO();
+    games_played = SRAM_readLong(sizeof(u32) * (opponent * 3 + 0));
+    games_won = SRAM_readLong(sizeof(u32) * (opponent * 3 + 1));
+    games_lost = SRAM_readLong(sizeof(u32) * (opponent * 3 + 2));
+    SRAM_disable();
+}
+
+void saveScores(enum OPPONENT_TYPE opponent)
+{
+    SRAM_enable();
+    SRAM_writeLong(sizeof(u32) * (opponent * 3 + 0), games_played);
+    SRAM_writeLong(sizeof(u32) * (opponent * 3 + 1), games_won);
+    SRAM_writeLong(sizeof(u32) * (opponent * 3 + 2), games_lost);
+    SRAM_disable();
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////
 // game handling
 /////////////////////////////////////////////////////////////////////////////////////
 
 void startGame(enum OPPONENT_TYPE opponent)
 {
+    // Set the opponent
     game_opponent = opponent;
+    // Load scores from SRAM
+    loadScores(opponent);
+    // Set the game state
     current_game_state = GAME_PLAYING;
-    // reset scores
-    games_played = 0;
-    player1_wins = 0;
-    player2_wins = 0;
     // set the scrolling tiled background
     setBackground();
+    // set the scores in the foreground
+    setForeground();
+    // start playing the music
+    XGM_startPlay(music_bg);
     // reset the game (draws the game board & scores)
     resetGame();
 }
@@ -563,6 +618,8 @@ void closeGame()
     VDP_clearPlane(BG_B, TRUE);
     // Hide pause menu sprites
     setPauseMenuVisibility(HIDDEN);
+    // Stop music
+    XGM_stopPlay();
 }
 
 void setBackground()
@@ -578,6 +635,37 @@ void setBackground()
     }
 }
 
+void setForeground()
+{
+    // Draw the corners of the game square
+    VDP_setTileMapXY(BG_A, TILE_ATTR_FULL(PAL1, 0, FALSE, FALSE, border_basetile), 0, 0);
+    VDP_setTileMapXY(BG_A, TILE_ATTR_FULL(PAL1, 0, FALSE, TRUE, border_basetile), 27, 0);
+    VDP_setTileMapXY(BG_A, TILE_ATTR_FULL(PAL1, 0, TRUE, FALSE, border_basetile), 0, 27);
+    VDP_setTileMapXY(BG_A, TILE_ATTR_FULL(PAL1, 0, TRUE, TRUE, border_basetile), 27, 27);
+
+    // draw the border around the game square
+    for(u16 i=1; i<27; i++)
+    {
+        VDP_setTileMapXY(BG_A, TILE_ATTR_FULL(PAL1, 0, FALSE, FALSE, border_basetile+1), i, 0);
+        VDP_setTileMapXY(BG_A, TILE_ATTR_FULL(PAL1, 0, TRUE, FALSE, border_basetile+1), i, 27);
+        VDP_setTileMapXY(BG_A, TILE_ATTR_FULL(PAL1, 0, FALSE, FALSE, border_basetile+2), 0, i);
+        VDP_setTileMapXY(BG_A, TILE_ATTR_FULL(PAL1, 0, FALSE, TRUE, border_basetile+2), 27, i);
+    }
+
+    // fill the score panel on the right of the screen
+    for(u16 x=28; x<40; x++)
+    {
+        for(u16 y=0; y<28; y++)
+        {
+            VDP_setTileMapXY(BG_A, TILE_ATTR_FULL(PAL1, 0, FALSE, FALSE, border_basetile+3), x, y);
+        }
+    }
+
+    // draw the player images
+    VDP_setTileMapEx(BG_A, img_crossbg.tilemap, crossbg_basetile, 30, 1, 0, 0, img_crossbg.tilemap->w, img_crossbg.tilemap->h, DMA);
+    VDP_setTileMapEx(BG_A, img_noughtbg.tilemap, noughtbg_basetile, 30, 18, 0, 0, img_noughtbg.tilemap->w, img_noughtbg.tilemap->h, DMA);
+}
+
 void setUserCursorVisibility(SpriteVisibility value)
 {
     for(int i=0; i<4; i++) SPR_setVisibility(user_cursor[i], value);
@@ -585,15 +673,17 @@ void setUserCursorVisibility(SpriteVisibility value)
 
 void drawGameScores()
 {
-    char s[10];
-    sprintf(s, "WINS %d", player1_wins);
-    VDP_drawText(s, 30, 2);
+    // stats are from point of view of opponent
+    char s[8];
+    intToStr(games_lost, s, 8);
+    VDP_drawText(s, 30, 9);
 
-    sprintf(s, "LOST %d", player2_wins);
-    VDP_drawText(s, 30, 6);
+    intToStr(games_played - games_won - games_lost, s, 8);
+    VDP_drawText("Draws:", 30, 13);
+    VDP_drawText(s, 30, 15);
 
-    sprintf(s, "DRAW %d", games_played - player1_wins - player2_wins);
-    VDP_drawText(s, 30, 4);
+    intToStr(games_won, s, 8);
+    VDP_drawText(s, 30, 26);
 }
 
 void drawGameBoardSquare(int square, enum SQUARE_STATE state)
@@ -622,8 +712,8 @@ void takeSquare(int squareindex)
     // check for win
     if (testWin() == TRUE)
     {
-        if (current_player == CROSS) player1_wins++;
-        if (current_player == NOUGHT) player2_wins++;
+        if (current_player == CROSS) games_lost++;
+        if (current_player == NOUGHT) games_won++;
         moves_remaining = 0;
     }
 
@@ -703,6 +793,8 @@ void showGameResult()
     current_game_state = GAME_RESULT;
     // hide the cursor sprites
     setUserCursorVisibility(HIDDEN); 
+    // Save scores
+    saveScores(game_opponent);
     // Update the scores
     drawGameScores();
 }
@@ -715,7 +807,6 @@ void handleGameResultInput(u16 joy, u16 changed, u16 state)
         resetGame();
     }
 }
-
 
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -943,7 +1034,7 @@ bool testWin()
 
 int main()
 {
-   // load graphics
+    // load graphics
     VDP_setPlanSize(64, 32);
     loadTiles();
     loadPallete();
