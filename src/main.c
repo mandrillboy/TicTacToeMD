@@ -272,7 +272,7 @@ void startMainMenu()
     selected_menu_option = MAIN_MENU_1_PLAY;
 
     // draw the logo image
-    VDP_setTileMapEx(BG_A, img_title.tilemap, title_basetile, (40 - img_title.tilemap->w) / 2, 5, 0, 0, img_title.tilemap->w, img_title.tilemap->h, CPU);
+    VDP_setTileMapEx(BG_A, img_title.tilemap, title_basetile, (40 - img_title.tilemap->w) / 2, 5, 0, 0, img_title.tilemap->w, img_title.tilemap->h, DMA);
 
     // draw the menu items
     VDP_drawText("1 PLAYER", 16, 16);
@@ -347,7 +347,7 @@ void startCredits()
     current_game_state = CREDITS;
 
     // draw the logo image
-    VDP_setTileMapEx(BG_A, img_title.tilemap, title_basetile, 0, 0, 0, 0, img_title.tilemap->w, img_title.tilemap->h, CPU);
+    VDP_setTileMapEx(BG_A, img_title.tilemap, title_basetile, 0, 0, 0, 0, img_title.tilemap->w, img_title.tilemap->h, DMA);
 
     // draw the credits
     VDP_drawText("PROGRAMMING", 1, 8);
@@ -387,7 +387,7 @@ void startSelectOpponentMenu()
     game_opponent = CPU_EASY;
 
     // draw title image
-    VDP_setTileMapEx(BG_A, img_title.tilemap, title_basetile, (40 - img_title.tilemap->w) / 2, 5, 0, 0, img_title.tilemap->w, img_title.tilemap->h, CPU);
+    VDP_setTileMapEx(BG_A, img_title.tilemap, title_basetile, (40 - img_title.tilemap->w) / 2, 5, 0, 0, img_title.tilemap->w, img_title.tilemap->h, DMA);
 
     // draw the menu items
     VDP_drawText("SELECT DIFFICULTY", 10, 14);
@@ -455,7 +455,7 @@ void StartSelectPlayer2Menu()
     player2_pad = JOY_1;
 
     // draw title image
-    VDP_setTileMapEx(BG_A, img_title.tilemap, title_basetile, (40 - img_title.tilemap->w) / 2, 5, 0, 0, img_title.tilemap->w, img_title.tilemap->h, CPU);
+    VDP_setTileMapEx(BG_A, img_title.tilemap, title_basetile, (40 - img_title.tilemap->w) / 2, 5, 0, 0, img_title.tilemap->w, img_title.tilemap->h, DMA);
 
     // draw the menu items
     VDP_drawText("ASSIGN PLAYER 2", 13, 14);
@@ -630,7 +630,7 @@ void setBackground()
 
     for(int i=0; i<w; i++) {
         for(int j=0; j<h; j++) {
-            VDP_setTileMapEx(BG_B, img_bg.tilemap, bg_basetile, i * img_bg.tilemap->w, j * img_bg.tilemap->h, 0, 0, img_bg.tilemap->w, img_bg.tilemap->h, CPU);
+            VDP_setTileMapEx(BG_B, img_bg.tilemap, bg_basetile, i * img_bg.tilemap->w, j * img_bg.tilemap->h, 0, 0, img_bg.tilemap->w, img_bg.tilemap->h, DMA);
         }
     }
 }
@@ -691,9 +691,9 @@ void drawGameBoardSquare(int square, enum SQUARE_STATE state)
     u16 x = (square % 3 * 9) + 1;
     u16 y = (square / 3 * 9) + 1;
     
-    if (state == EMPTY) VDP_setTileMapEx(BG_A, img_empty.tilemap, square_basetile, x, y, 0, 0, img_empty.tilemap->w, img_empty.tilemap->h, CPU);
-    if (state == CROSS) VDP_setTileMapEx(BG_A, img_cross.tilemap, cross_basetile, x, y, 0, 0, img_cross.tilemap->w, img_cross.tilemap->h, CPU);
-    if (state == NOUGHT) VDP_setTileMapEx(BG_A, img_nought.tilemap, nought_basetile, x, y, 0, 0, img_nought.tilemap->w, img_nought.tilemap->h, CPU);
+    if (state == EMPTY) VDP_setTileMapEx(BG_A, img_empty.tilemap, square_basetile, x, y, 0, 0, img_empty.tilemap->w, img_empty.tilemap->h, DMA);
+    if (state == CROSS) VDP_setTileMapEx(BG_A, img_cross.tilemap, cross_basetile, x, y, 0, 0, img_cross.tilemap->w, img_cross.tilemap->h, DMA);
+    if (state == NOUGHT) VDP_setTileMapEx(BG_A, img_nought.tilemap, nought_basetile, x, y, 0, 0, img_nought.tilemap->w, img_nought.tilemap->h, DMA);
 }
 
 void takeSquare(int squareindex)
